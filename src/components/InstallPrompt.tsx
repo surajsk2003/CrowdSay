@@ -14,6 +14,11 @@ export default function InstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // Don't show install prompt in development
+  if (process.env.NODE_ENV === 'development') {
+    return null;
+  }
+
   useEffect(() => {
     // Check if app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {

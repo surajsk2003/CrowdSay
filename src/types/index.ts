@@ -33,4 +33,19 @@ export interface User {
   reputation: number;
   createdPolls: string[];
   votedPolls: string[];
+  avatar?: string;
+  bio?: string;
+  location?: string;
+  joinedAt: Date;
+  lastActiveAt: Date;
+  stats: UserStats;
+}
+
+export interface UserStats {
+  totalVotes: number;
+  totalPollsCreated: number;
+  totalViews: number;
+  averageEngagement: number;
+  topCategories: string[];
+  streak: number;
 }

@@ -1,8 +1,9 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, User, Vote } from 'lucide-react';
+import { LogOut, User, Vote, Settings } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 export default function Header() {
@@ -36,12 +37,22 @@ export default function Header() {
           
           <div className="flex items-center space-x-4">
             {user && (
-              <div className="hidden sm:flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-sm text-gray-600 dark:text-gray-300">
-                <User className="h-4 w-4" />
-                <span>
-                  {user.isAnonymous ? 'Guest User' : user.email}
-                </span>
-              </div>
+              <>
+                <Link
+                  href="/profile"
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Profile</span>
+                </Link>
+                
+                <div className="hidden md:flex items-center space-x-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-sm text-gray-600 dark:text-gray-300">
+                  <User className="h-4 w-4" />
+                  <span>
+                    {user.isAnonymous ? 'Guest User' : user.email}
+                  </span>
+                </div>
+              </>
             )}
             
             <ThemeToggle />

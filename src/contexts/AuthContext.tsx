@@ -10,6 +10,7 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { getUser, createUser } from '@/lib/firestore';
 
 const isDemoMode = process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-api-key' || !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
@@ -41,8 +42,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      
+      // Create user profile if it doesn't exist
+      if (user) {
+        try {
+          const existingUser = await getUser(user.uid);
+          if (!existingUser) {
+            await createUser(user.uid, {
+              email: user.email || '',
+              displayName: user.displayName || undefined,
+              isAnonymous: user.isAnonymous,
+            });
+          }
+        } catch (error) {
+          console.error('Error handling user profile:', error);
+        }
+      }
+      
       setLoading(false);
     });
 

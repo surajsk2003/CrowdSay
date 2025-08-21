@@ -15,7 +15,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Poll } from '@/types';
+import { Poll, User, UserStats } from '@/types';
 
 const isDemoMode = process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-api-key' || !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
@@ -74,6 +74,32 @@ const demoPolls: Poll[] = [
 ];
 
 const demoVotes: { pollId: string; userId: string; optionId: string }[] = [];
+
+// Demo users
+const demoUsers: Record<string, User> = {
+  'demo-user': {
+    id: 'demo-user',
+    email: 'demo@crowdsay.com',
+    displayName: 'Demo User',
+    isAnonymous: false,
+    reputation: 150,
+    createdPolls: ['demo-1', 'demo-2', 'demo-3'],
+    votedPolls: [],
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo&backgroundColor=b6e3f4',
+    bio: 'Welcome to CrowdSay! This is a demo profile showcasing the platform features.',
+    location: 'Demo City, Demo Country',
+    joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+    lastActiveAt: new Date(),
+    stats: {
+      totalVotes: 25,
+      totalPollsCreated: 3,
+      totalViews: 4290,
+      averageEngagement: 78,
+      topCategories: ['technology', 'lifestyle', 'business'],
+      streak: 7
+    }
+  }
+};
 
 // Collections
 export const COLLECTIONS = {
@@ -345,4 +371,145 @@ export function subscribeToPoll(pollId: string, callback: (poll: Poll | null) =>
       callback(null);
     }
   });
+}
+
+// User operations
+export async function getUser(userId: string): Promise<User | null> {
+  if (isDemoMode) {
+    return demoUsers[userId] || null;
+  }
+
+  try {
+    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, userId));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      return {
+        id: userDoc.id,
+        ...data,
+        joinedAt: data.joinedAt?.toDate(),
+        lastActiveAt: data.lastActiveAt?.toDate(),
+      } as User;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user:', error);
+    throw error;
+  }
+}
+
+export async function createUser(userId: string, userData: Partial<User>): Promise<void> {
+  if (isDemoMode) {
+    const newUser: User = {
+      id: userId,
+      email: userData.email || '',
+      displayName: userData.displayName || 'Anonymous User',
+      isAnonymous: userData.isAnonymous || false,
+      reputation: 0,
+      createdPolls: [],
+      votedPolls: [],
+      avatar: userData.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}&backgroundColor=b6e3f4,c0aede,d1d4f9`,
+      bio: userData.bio || '',
+      location: userData.location || '',
+      joinedAt: new Date(),
+      lastActiveAt: new Date(),
+      stats: {
+        totalVotes: 0,
+        totalPollsCreated: 0,
+        totalViews: 0,
+        averageEngagement: 0,
+        topCategories: [],
+        streak: 0
+      }
+    };
+    demoUsers[userId] = newUser;
+    return;
+  }
+
+  try {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, {
+      ...userData,
+      joinedAt: serverTimestamp(),
+      lastActiveAt: serverTimestamp(),
+      reputation: 0,
+      createdPolls: [],
+      votedPolls: [],
+      stats: {
+        totalVotes: 0,
+        totalPollsCreated: 0,
+        totalViews: 0,
+        averageEngagement: 0,
+        topCategories: [],
+        streak: 0
+      }
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
+}
+
+export async function updateUserProfile(userId: string, updates: Partial<User>): Promise<void> {
+  if (isDemoMode) {
+    if (demoUsers[userId]) {
+      demoUsers[userId] = { ...demoUsers[userId], ...updates };
+    }
+    return;
+  }
+
+  try {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, {
+      ...updates,
+      lastActiveAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+}
+
+export async function updateUserStats(userId: string, statsUpdate: Partial<UserStats>): Promise<void> {
+  if (isDemoMode) {
+    if (demoUsers[userId]) {
+      demoUsers[userId].stats = { ...demoUsers[userId].stats, ...statsUpdate };
+    }
+    return;
+  }
+
+  try {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const currentStats = userDoc.data().stats || {};
+      await updateDoc(userRef, {
+        stats: { ...currentStats, ...statsUpdate },
+        lastActiveAt: serverTimestamp()
+      });
+    }
+  } catch (error) {
+    console.error('Error updating user stats:', error);
+    throw error;
+  }
+}
+
+export async function incrementUserReputation(userId: string, amount: number = 1): Promise<void> {
+  if (isDemoMode) {
+    if (demoUsers[userId]) {
+      demoUsers[userId].reputation += amount;
+    }
+    return;
+  }
+
+  try {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, {
+      reputation: increment(amount),
+      lastActiveAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error incrementing user reputation:', error);
+    throw error;
+  }
 }
