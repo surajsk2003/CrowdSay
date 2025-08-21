@@ -5,6 +5,7 @@ import { Poll } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { submitVote, hasUserVoted, subscribeToPoll } from '@/lib/firestore';
 import { Clock, Eye, Users } from 'lucide-react';
+import ShareButton from './ShareButton';
 import toast from 'react-hot-toast';
 
 interface PollCardProps {
@@ -62,7 +63,7 @@ export default function PollCard({ initialPoll }: PollCardProps) {
       await submitVote(poll.id, optionId, user.uid);
       setHasVoted(true);
       toast.success('Vote submitted successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit vote');
       setSelectedOption(null);
     } finally {
@@ -99,19 +100,23 @@ export default function PollCard({ initialPoll }: PollCardProps) {
           {poll.question}
         </h3>
         
-        <div className="flex items-center space-x-4 text-sm text-gray-500">
-          <div className="flex items-center space-x-1">
-            <Eye className="h-4 w-4" />
-            <span>{poll.views}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center space-x-1">
+              <Eye className="h-4 w-4" />
+              <span>{poll.views}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Users className="h-4 w-4" />
+              <span>{poll.totalVotes} votes</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Clock className="h-4 w-4" />
+              <span>{getTimeRemaining()}</span>
+            </div>
           </div>
-          <div className="flex items-center space-x-1">
-            <Users className="h-4 w-4" />
-            <span>{poll.totalVotes} votes</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Clock className="h-4 w-4" />
-            <span>{getTimeRemaining()}</span>
-          </div>
+          
+          <ShareButton pollId={poll.id} question={poll.question} />
         </div>
       </div>
 

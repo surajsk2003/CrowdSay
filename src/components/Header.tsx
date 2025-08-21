@@ -15,7 +15,7 @@ export default function Header() {
       try {
         await signInAnonymous();
         toast.success('Signed in as guest');
-      } catch (error) {
+      } catch {
         toast.error('Failed to sign in');
       }
     }

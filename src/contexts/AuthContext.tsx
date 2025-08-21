@@ -11,6 +11,8 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
+const isDemoMode = process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-api-key' || !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -27,6 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isDemoMode) {
+      // In demo mode, create a mock user
+      setUser({
+        uid: 'demo-user',
+        email: 'demo@example.com',
+        isAnonymous: true,
+        displayName: 'Demo User'
+      } as User);
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
@@ -36,18 +50,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInAnonymous = async () => {
+    if (isDemoMode) return;
     await signInAnonymously(auth);
   };
 
   const signInWithEmail = async (email: string, password: string) => {
+    if (isDemoMode) return;
     await signInWithEmailAndPassword(auth, email, password);
   };
 
   const signUpWithEmail = async (email: string, password: string) => {
+    if (isDemoMode) return;
     await createUserWithEmailAndPassword(auth, email, password);
   };
 
   const logout = async () => {
+    if (isDemoMode) {
+      setUser(null);
+      return;
+    }
     await signOut(auth);
   };
 

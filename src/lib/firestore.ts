@@ -3,7 +3,6 @@ import {
   doc,
   addDoc,
   updateDoc,
-  deleteDoc,
   getDocs,
   getDoc,
   query,
@@ -16,7 +15,65 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Poll, Vote, User } from '@/types';
+import { Poll } from '@/types';
+
+const isDemoMode = process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'demo-api-key' || !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+// Demo data
+const demoPolls: Poll[] = [
+  {
+    id: 'demo-1',
+    question: 'Which programming language should I learn next?',
+    options: [
+      { id: 'option_0', label: 'TypeScript', votes: 42 },
+      { id: 'option_1', label: 'Python', votes: 38 },
+      { id: 'option_2', label: 'Rust', votes: 25 },
+      { id: 'option_3', label: 'Go', votes: 31 }
+    ],
+    creatorId: 'demo-user',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    expiresAt: new Date(Date.now() + 22 * 60 * 60 * 1000), // 22 hours from now
+    category: 'technology',
+    status: 'active',
+    views: 1250,
+    totalVotes: 136
+  },
+  {
+    id: 'demo-2',
+    question: 'What\'s your favorite way to spend a weekend?',
+    options: [
+      { id: 'option_0', label: 'Outdoor activities', votes: 28 },
+      { id: 'option_1', label: 'Reading books', votes: 15 },
+      { id: 'option_2', label: 'Watching movies', votes: 32 },
+      { id: 'option_3', label: 'Spending time with family', votes: 45 }
+    ],
+    creatorId: 'demo-user',
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
+    expiresAt: new Date(Date.now() + 19 * 60 * 60 * 1000), // 19 hours from now
+    category: 'lifestyle',
+    status: 'active',
+    views: 890,
+    totalVotes: 120
+  },
+  {
+    id: 'demo-3',
+    question: 'Should remote work become the new standard?',
+    options: [
+      { id: 'option_0', label: 'Yes, completely remote', votes: 55 },
+      { id: 'option_1', label: 'Hybrid model is better', votes: 67 },
+      { id: 'option_2', label: 'No, office work is important', votes: 23 }
+    ],
+    creatorId: 'demo-user',
+    createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
+    expiresAt: new Date(Date.now() + 23 * 60 * 60 * 1000), // 23 hours from now
+    category: 'other',
+    status: 'active',
+    views: 2150,
+    totalVotes: 145
+  }
+];
+
+const demoVotes: { pollId: string; userId: string; optionId: string }[] = [];
 
 // Collections
 export const COLLECTIONS = {
@@ -27,6 +84,17 @@ export const COLLECTIONS = {
 
 // Poll operations
 export async function createPoll(pollData: Omit<Poll, 'id' | 'views' | 'totalVotes'>) {
+  if (isDemoMode) {
+    const newPoll: Poll = {
+      ...pollData,
+      id: `demo-${Date.now()}`,
+      views: 0,
+      totalVotes: 0,
+    };
+    demoPolls.unshift(newPoll);
+    return newPoll.id;
+  }
+
   try {
     const docRef = await addDoc(collection(db, COLLECTIONS.POLLS), {
       ...pollData,
@@ -43,6 +111,22 @@ export async function createPoll(pollData: Omit<Poll, 'id' | 'views' | 'totalVot
 }
 
 export async function getPolls(category?: string, sortBy: 'trending' | 'recent' = 'trending') {
+  if (isDemoMode) {
+    let filteredPolls = [...demoPolls];
+    
+    if (category && category !== 'all') {
+      filteredPolls = filteredPolls.filter(poll => poll.category === category);
+    }
+    
+    if (sortBy === 'trending') {
+      filteredPolls.sort((a, b) => b.views - a.views);
+    } else {
+      filteredPolls.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+    
+    return filteredPolls.slice(0, 20);
+  }
+
   try {
     let q = query(
       collection(db, COLLECTIONS.POLLS),
@@ -73,6 +157,10 @@ export async function getPolls(category?: string, sortBy: 'trending' | 'recent' 
 }
 
 export async function getPoll(pollId: string) {
+  if (isDemoMode) {
+    return demoPolls.find(poll => poll.id === pollId) || null;
+  }
+
   try {
     const docRef = doc(db, COLLECTIONS.POLLS, pollId);
     const docSnap = await getDoc(docRef);
@@ -94,6 +182,14 @@ export async function getPoll(pollId: string) {
 }
 
 export async function incrementPollViews(pollId: string) {
+  if (isDemoMode) {
+    const poll = demoPolls.find(p => p.id === pollId);
+    if (poll) {
+      poll.views += 1;
+    }
+    return;
+  }
+
   try {
     const pollRef = doc(db, COLLECTIONS.POLLS, pollId);
     await updateDoc(pollRef, {
@@ -106,6 +202,29 @@ export async function incrementPollViews(pollId: string) {
 
 // Vote operations
 export async function submitVote(pollId: string, optionId: string, userId: string) {
+  if (isDemoMode) {
+    // Check if user already voted
+    const existingVote = demoVotes.find(vote => vote.pollId === pollId && vote.userId === userId);
+    if (existingVote) {
+      throw new Error('User has already voted on this poll');
+    }
+
+    // Add vote
+    demoVotes.push({ pollId, optionId, userId });
+
+    // Update poll option vote count
+    const poll = demoPolls.find(p => p.id === pollId);
+    if (poll) {
+      poll.options = poll.options.map(option => 
+        option.id === optionId 
+          ? { ...option, votes: option.votes + 1 }
+          : option
+      );
+      poll.totalVotes += 1;
+    }
+    return;
+  }
+
   try {
     // Check if user already voted
     const existingVoteQuery = query(
@@ -151,6 +270,10 @@ export async function submitVote(pollId: string, optionId: string, userId: strin
 }
 
 export async function hasUserVoted(pollId: string, userId: string) {
+  if (isDemoMode) {
+    return demoVotes.some(vote => vote.pollId === pollId && vote.userId === userId);
+  }
+
   try {
     const voteQuery = query(
       collection(db, COLLECTIONS.VOTES),
@@ -167,6 +290,13 @@ export async function hasUserVoted(pollId: string, userId: string) {
 
 // Real-time subscriptions
 export function subscribeToPoll(pollId: string, callback: (poll: Poll | null) => void) {
+  if (isDemoMode) {
+    const poll = demoPolls.find(p => p.id === pollId);
+    callback(poll || null);
+    // Return a no-op unsubscribe function
+    return () => {};
+  }
+
   const pollRef = doc(db, COLLECTIONS.POLLS, pollId);
   
   return onSnapshot(pollRef, (doc) => {
