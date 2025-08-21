@@ -110,7 +110,13 @@ export async function createPoll(pollData: Omit<Poll, 'id' | 'views' | 'totalVot
   }
 }
 
-export async function getPolls(category?: string, sortBy: 'trending' | 'recent' = 'trending', searchQuery?: string) {
+export async function getPolls(
+  category?: string, 
+  sortBy: 'trending' | 'recent' = 'trending', 
+  searchQuery?: string,
+  page: number = 1,
+  pageSize: number = 20
+) {
   if (isDemoMode) {
     let filteredPolls = [...demoPolls];
     
@@ -133,7 +139,9 @@ export async function getPolls(category?: string, sortBy: 'trending' | 'recent' 
       filteredPolls.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
     
-    return filteredPolls.slice(0, 20);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredPolls.slice(startIndex, endIndex);
   }
 
   try {
@@ -147,13 +155,13 @@ export async function getPolls(category?: string, sortBy: 'trending' | 'recent' 
     }
 
     if (sortBy === 'trending') {
-      q = query(q, orderBy('views', 'desc'), limit(20));
+      q = query(q, orderBy('views', 'desc'), limit(pageSize * page));
     } else {
-      q = query(q, orderBy('createdAt', 'desc'), limit(20));
+      q = query(q, orderBy('createdAt', 'desc'), limit(pageSize * page));
     }
 
     const querySnapshot = await getDocs(q);
-    let polls = querySnapshot.docs.map(doc => ({
+    let allPolls = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
@@ -163,14 +171,17 @@ export async function getPolls(category?: string, sortBy: 'trending' | 'recent' 
     // Client-side search filtering for Firebase
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      polls = polls.filter(poll => 
+      allPolls = allPolls.filter(poll => 
         poll.question.toLowerCase().includes(query) ||
         poll.options.some(option => option.label.toLowerCase().includes(query)) ||
         poll.category.toLowerCase().includes(query)
       );
     }
 
-    return polls;
+    // Return only the current page
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return allPolls.slice(startIndex, endIndex);
   } catch (error) {
     console.error('Error getting polls:', error);
     throw error;

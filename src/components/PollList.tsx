@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Poll } from '@/types';
 import { getPolls } from '@/lib/firestore';
 import PollCard from './PollCard';
 import SearchBar from './SearchBar';
 import LoadingSkeleton from './LoadingSkeleton';
 import ErrorState, { SearchEmptyState } from './ErrorState';
-import { Filter, TrendingUp, Clock } from 'lucide-react';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { Filter, TrendingUp, Clock, Loader2 } from 'lucide-react';
 
 const categories = [
   { id: 'all', label: 'All' },
@@ -20,34 +21,61 @@ const categories = [
 ];
 
 export default function PollList() {
-  const [polls, setPolls] = useState<Poll[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'trending' | 'recent'>('trending');
   const [searchQuery, setSearchQuery] = useState('');
+  const [initialLoading, setInitialLoading] = useState(true);
 
+  const fetchPolls = useCallback(async (page: number) => {
+    return await getPolls(
+      selectedCategory === 'all' ? undefined : selectedCategory,
+      sortBy,
+      searchQuery,
+      page,
+      12 // Load 12 polls per page
+    );
+  }, [selectedCategory, sortBy, searchQuery]);
+
+  const {
+    items: polls,
+    loading: loadingMore,
+    error,
+    hasMore,
+    ref: loadMoreRef,
+    reset,
+    setItems,
+  } = useInfiniteScroll({
+    fetchMore: fetchPolls,
+    hasMore: true,
+  });
+
+  // Load initial data
   useEffect(() => {
-    const fetchPolls = async () => {
-      setLoading(true);
-      setError(null);
+    const loadInitialPolls = async () => {
+      setInitialLoading(true);
       try {
-        const fetchedPolls = await getPolls(
+        const initialPolls = await getPolls(
           selectedCategory === 'all' ? undefined : selectedCategory,
           sortBy,
-          searchQuery
+          searchQuery,
+          1,
+          12
         );
-        setPolls(fetchedPolls);
+        setItems(initialPolls);
       } catch (err) {
-        console.error('Error fetching polls:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load polls');
+        console.error('Error fetching initial polls:', err);
       } finally {
-        setLoading(false);
+        setInitialLoading(false);
       }
     };
 
-    fetchPolls();
-  }, [selectedCategory, sortBy, searchQuery]);
+    loadInitialPolls();
+  }, [selectedCategory, sortBy, searchQuery, setItems]);
+
+  // Reset when filters change
+  useEffect(() => {
+    reset();
+  }, [selectedCategory, sortBy, searchQuery, reset]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -58,24 +86,7 @@ export default function PollList() {
   };
 
   const handleRetry = () => {
-    const fetchPolls = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const fetchedPolls = await getPolls(
-          selectedCategory === 'all' ? undefined : selectedCategory,
-          sortBy,
-          searchQuery
-        );
-        setPolls(fetchedPolls);
-      } catch (err) {
-        console.error('Error fetching polls:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load polls');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPolls();
+    reset();
   };
 
   return (
@@ -93,8 +104,8 @@ export default function PollList() {
       {searchQuery && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p className="text-blue-800 dark:text-blue-200">
-            {loading ? 'Searching...' : `Found ${polls.length} poll${polls.length !== 1 ? 's' : ''} for "${searchQuery}"`}
-            {!loading && polls.length > 0 && (
+            {initialLoading ? 'Searching...' : `Found ${polls.length}${hasMore ? '+' : ''} poll${polls.length !== 1 ? 's' : ''} for "${searchQuery}"`}
+            {!initialLoading && polls.length > 0 && (
               <button
                 onClick={handleClearSearch}
                 className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
@@ -164,7 +175,7 @@ export default function PollList() {
       </div>
 
       {/* Content */}
-      {loading ? (
+      {initialLoading ? (
         <LoadingSkeleton variant="list" count={6} />
       ) : error ? (
         <ErrorState
@@ -173,11 +184,37 @@ export default function PollList() {
           onAction={handleRetry}
         />
       ) : polls.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {polls.map((poll) => (
-            <PollCard key={poll.id} initialPoll={poll} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {polls.map((poll) => (
+              <PollCard key={poll.id} initialPoll={poll} />
+            ))}
+          </div>
+          
+          {/* Load More Trigger */}
+          {hasMore && (
+            <div ref={loadMoreRef} className="flex justify-center py-8">
+              {loadingMore ? (
+                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more polls...</span>
+                </div>
+              ) : (
+                <div className="text-gray-500 dark:text-gray-400 text-sm">
+                  Scroll down to load more polls
+                </div>
+              )}
+            </div>
+          )}
+          
+          {!hasMore && polls.length > 12 && (
+            <div className="text-center py-8">
+              <div className="text-gray-500 dark:text-gray-400 text-sm">
+                You've reached the end! 🎉
+              </div>
+            </div>
+          )}
+        </>
       ) : searchQuery ? (
         <SearchEmptyState query={searchQuery} onClear={handleClearSearch} />
       ) : (
