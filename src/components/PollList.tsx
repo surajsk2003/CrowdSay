@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Poll } from '@/types';
 import { getPolls } from '@/lib/firestore';
 import PollCard from './PollCard';
+import SearchBar from './SearchBar';
 import { Filter, TrendingUp, Clock } from 'lucide-react';
 
 const categories = [
@@ -21,6 +22,7 @@ export default function PollList() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'trending' | 'recent'>('trending');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchPolls = async () => {
@@ -28,7 +30,8 @@ export default function PollList() {
       try {
         const fetchedPolls = await getPolls(
           selectedCategory === 'all' ? undefined : selectedCategory,
-          sortBy
+          sortBy,
+          searchQuery
         );
         setPolls(fetchedPolls);
       } catch (error) {
@@ -39,7 +42,15 @@ export default function PollList() {
     };
 
     fetchPolls();
-  }, [selectedCategory, sortBy]);
+  }, [selectedCategory, sortBy, searchQuery]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+  };
 
   if (loading) {
     return (
@@ -51,14 +62,40 @@ export default function PollList() {
 
   return (
     <div className="space-y-6">
+      {/* Search Bar */}
+      <div className="flex justify-center">
+        <SearchBar 
+          onSearch={handleSearch}
+          onClear={handleClearSearch}
+          placeholder="Search polls by question, options, or category..."
+        />
+      </div>
+
+      {/* Search Results Info */}
+      {searchQuery && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <p className="text-blue-800 dark:text-blue-200">
+            {loading ? 'Searching...' : `Found ${polls.length} poll${polls.length !== 1 ? 's' : ''} for "${searchQuery}"`}
+            {!loading && polls.length > 0 && (
+              <button
+                onClick={handleClearSearch}
+                className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Clear search
+              </button>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
           {/* Category Filter */}
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <Filter className="h-5 w-5 text-gray-500" />
-              <span className="font-medium text-gray-700">Category:</span>
+              <Filter className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <span className="font-medium text-gray-700 dark:text-gray-300">Category:</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
@@ -67,8 +104,8 @@ export default function PollList() {
                   onClick={() => setSelectedCategory(category.id)}
                   className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                     selectedCategory === category.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
                   {category.label}
@@ -79,14 +116,14 @@ export default function PollList() {
 
           {/* Sort Options */}
           <div className="flex items-center space-x-2">
-            <span className="font-medium text-gray-700">Sort by:</span>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <span className="font-medium text-gray-700 dark:text-gray-300">Sort by:</span>
+            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
               <button
                 onClick={() => setSortBy('trending')}
                 className={`flex items-center space-x-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
                   sortBy === 'trending'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
                 <TrendingUp className="h-4 w-4" />
@@ -96,8 +133,8 @@ export default function PollList() {
                 onClick={() => setSortBy('recent')}
                 className={`flex items-center space-x-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
                   sortBy === 'recent'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
                 <Clock className="h-4 w-4" />
@@ -117,9 +154,13 @@ export default function PollList() {
         </div>
       ) : (
         <div className="text-center py-12">
-          <div className="text-gray-500 mb-2">No polls found</div>
-          <p className="text-sm text-gray-400">
-            {selectedCategory !== 'all' 
+          <div className="text-gray-500 dark:text-gray-400 mb-2">
+            {searchQuery ? 'No polls found for your search' : 'No polls found'}
+          </div>
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            {searchQuery 
+              ? 'Try searching with different keywords'
+              : selectedCategory !== 'all' 
               ? `No polls in the ${categories.find(c => c.id === selectedCategory)?.label} category`
               : 'Be the first to create a poll!'
             }

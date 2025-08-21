@@ -110,9 +110,18 @@ export async function createPoll(pollData: Omit<Poll, 'id' | 'views' | 'totalVot
   }
 }
 
-export async function getPolls(category?: string, sortBy: 'trending' | 'recent' = 'trending') {
+export async function getPolls(category?: string, sortBy: 'trending' | 'recent' = 'trending', searchQuery?: string) {
   if (isDemoMode) {
     let filteredPolls = [...demoPolls];
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filteredPolls = filteredPolls.filter(poll => 
+        poll.question.toLowerCase().includes(query) ||
+        poll.options.some(option => option.label.toLowerCase().includes(query)) ||
+        poll.category.toLowerCase().includes(query)
+      );
+    }
     
     if (category && category !== 'all') {
       filteredPolls = filteredPolls.filter(poll => poll.category === category);
@@ -144,12 +153,24 @@ export async function getPolls(category?: string, sortBy: 'trending' | 'recent' 
     }
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+    let polls = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
       expiresAt: doc.data().expiresAt?.toDate(),
     })) as Poll[];
+
+    // Client-side search filtering for Firebase
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      polls = polls.filter(poll => 
+        poll.question.toLowerCase().includes(query) ||
+        poll.options.some(option => option.label.toLowerCase().includes(query)) ||
+        poll.category.toLowerCase().includes(query)
+      );
+    }
+
+    return polls;
   } catch (error) {
     console.error('Error getting polls:', error);
     throw error;
