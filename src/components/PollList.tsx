@@ -5,6 +5,8 @@ import { Poll } from '@/types';
 import { getPolls } from '@/lib/firestore';
 import PollCard from './PollCard';
 import SearchBar from './SearchBar';
+import LoadingSkeleton from './LoadingSkeleton';
+import ErrorState, { SearchEmptyState } from './ErrorState';
 import { Filter, TrendingUp, Clock } from 'lucide-react';
 
 const categories = [
@@ -20,6 +22,7 @@ const categories = [
 export default function PollList() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'trending' | 'recent'>('trending');
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,6 +30,7 @@ export default function PollList() {
   useEffect(() => {
     const fetchPolls = async () => {
       setLoading(true);
+      setError(null);
       try {
         const fetchedPolls = await getPolls(
           selectedCategory === 'all' ? undefined : selectedCategory,
@@ -34,8 +38,9 @@ export default function PollList() {
           searchQuery
         );
         setPolls(fetchedPolls);
-      } catch (error) {
-        console.error('Error fetching polls:', error);
+      } catch (err) {
+        console.error('Error fetching polls:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load polls');
       } finally {
         setLoading(false);
       }
@@ -52,13 +57,26 @@ export default function PollList() {
     setSearchQuery('');
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const handleRetry = () => {
+    const fetchPolls = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const fetchedPolls = await getPolls(
+          selectedCategory === 'all' ? undefined : selectedCategory,
+          sortBy,
+          searchQuery
+        );
+        setPolls(fetchedPolls);
+      } catch (err) {
+        console.error('Error fetching polls:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load polls');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPolls();
+  };
 
   return (
     <div className="space-y-6">
@@ -145,27 +163,35 @@ export default function PollList() {
         </div>
       </div>
 
-      {/* Polls Grid */}
-      {polls.length > 0 ? (
+      {/* Content */}
+      {loading ? (
+        <LoadingSkeleton variant="list" count={6} />
+      ) : error ? (
+        <ErrorState
+          title="Failed to Load Polls"
+          message={error}
+          onAction={handleRetry}
+        />
+      ) : polls.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {polls.map((poll) => (
             <PollCard key={poll.id} initialPoll={poll} />
           ))}
         </div>
+      ) : searchQuery ? (
+        <SearchEmptyState query={searchQuery} onClear={handleClearSearch} />
       ) : (
-        <div className="text-center py-12">
-          <div className="text-gray-500 dark:text-gray-400 mb-2">
-            {searchQuery ? 'No polls found for your search' : 'No polls found'}
-          </div>
-          <p className="text-sm text-gray-400 dark:text-gray-500">
-            {searchQuery 
-              ? 'Try searching with different keywords'
-              : selectedCategory !== 'all' 
-              ? `No polls in the ${categories.find(c => c.id === selectedCategory)?.label} category`
-              : 'Be the first to create a poll!'
-            }
-          </p>
-        </div>
+        <ErrorState
+          variant="empty"
+          title={selectedCategory !== 'all' 
+            ? `No ${categories.find(c => c.id === selectedCategory)?.label} Polls`
+            : 'No Polls Yet'
+          }
+          message={selectedCategory !== 'all'
+            ? `No polls found in the ${categories.find(c => c.id === selectedCategory)?.label} category. Try browsing other categories or create the first poll!`
+            : 'Be the first to create a poll and start the conversation!'
+          }
+        />
       )}
     </div>
   );

@@ -129,18 +129,18 @@ export default function CreatePoll({ onPollCreated }: CreatePollProps) {
       {!isOpen ? (
         <button
           onClick={() => setIsOpen(true)}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
         >
           <Plus className="h-5 w-5" />
           <span>Create New Poll</span>
         </button>
       ) : (
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Create New Poll</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create New Poll</h2>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <X className="h-6 w-6" />
             </button>
