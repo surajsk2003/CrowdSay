@@ -37,9 +37,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    // Fallback to next-themes hook
-    const { theme, setTheme, resolvedTheme } = require('next-themes');
-    return { theme, setTheme, resolvedTheme };
+    // This will be handled by next-themes directly
+    throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
 }

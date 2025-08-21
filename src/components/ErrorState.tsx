@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, RefreshCw, WifiOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface ErrorStateProps {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Poll } from '@/types';
 import { getPolls } from '@/lib/firestore';
 import PollCard from './PollCard';
 import SearchBar from './SearchBar';
@@ -210,7 +209,7 @@ export default function PollList() {
           {!hasMore && polls.length > 12 && (
             <div className="text-center py-8">
               <div className="text-gray-500 dark:text-gray-400 text-sm">
-                You've reached the end! 🎉
+                You&apos;ve reached the end! 🎉
               </div>
             </div>
           )}

@@ -16,7 +16,7 @@ export default function LoadingSkeleton({ variant = 'poll', count = 1, className
       transition: {
         repeat: Infinity,
         duration: 1.5,
-        ease: 'easeInOut',
+        ease: 'easeInOut' as const,
       },
     },
   };

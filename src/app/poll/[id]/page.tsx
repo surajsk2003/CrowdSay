@@ -4,16 +4,18 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Header from '@/components/Header';
 import PollCard from '@/components/PollCard';
+import PollAnalytics from '@/components/PollAnalytics';
 import { getPoll, incrementPollViews } from '@/lib/firestore';
 import { Poll } from '@/types';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BarChart3 } from 'lucide-react';
 
 export default function PollPage() {
   const params = useParams();
   const [poll, setPoll] = useState<Poll | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => {
     const fetchPoll = async () => {
@@ -80,23 +82,45 @@ export default function PollPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
       
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex items-center justify-between">
           <Link
             href="/"
-            className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors"
+            className="inline-flex items-center space-x-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Back to all polls</span>
           </Link>
+          
+          <button
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>{showAnalytics ? 'Hide Analytics' : 'View Analytics'}</span>
+          </button>
         </div>
 
-        <div className="max-w-2xl mx-auto">
-          <PollCard initialPoll={poll} />
-        </div>
+        {showAnalytics ? (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                {poll.question}
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Poll Analytics & Detailed Results
+              </p>
+            </div>
+            <PollAnalytics poll={poll} />
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto">
+            <PollCard initialPoll={poll} />
+          </div>
+        )}
       </main>
     </div>
   );

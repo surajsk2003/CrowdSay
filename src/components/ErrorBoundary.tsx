@@ -24,7 +24,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: unknown) {
     console.error('Error caught by ErrorBoundary:', error, errorInfo);
   }
 
@@ -91,7 +91,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
 // Hook-based error boundary for specific components
 export function useErrorHandler() {
-  return (error: Error, errorInfo?: any) => {
+  return (error: Error, errorInfo?: unknown) => {
     console.error('Error handled:', error, errorInfo);
     // You could send error to logging service here
   };
